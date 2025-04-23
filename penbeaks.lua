@@ -244,7 +244,12 @@ local function hunt()
     shootTask = task.spawn(function()
         shooting = true
         while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") > 0 do
-            HuntLabel1:Set("Status: Hunting " .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP)
+            local string = "Status: Hunting "
+            if bird.Attributes.Shiny then string = string .. "Shiny " end
+            if bird.Attributes.Golden then string = string .. "Golden " end
+            if bird.Attributes.Mutation then string = stirng .. bird.Attributes.Mutation .. " " end
+            string = string .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP
+            HuntLabel1:Set(string)
             task.wait()
             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(clientBird.WorldPivot.Position + Vector3.new(0, -5, 0))
             if tick() - ts1 > firerate then

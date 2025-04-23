@@ -187,8 +187,11 @@ local function getBird(regions)
                     if attributes.Mutation == "Black & White" then
                         attributes.Mutation = "B&W"
                     end
-                    print("Mutation found: " .. attributes.Mutation)
-                    value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
+                    if gameData.mutationData[attributes.Mutation] == nil then
+                        warn("Mutation not found in data: " .. attributes.Mutation)
+                    else
+                        value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
+                    end
                 end
                 if attributes.Golden then
                     value = value * gameData.goldenData.PriceMultiplier

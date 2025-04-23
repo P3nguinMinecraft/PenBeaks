@@ -38,36 +38,95 @@ local Window = Rayfield:CreateWindow({
     }
 })
 
-local MainTab = Window:CreateTab("Main")
+local HomeTab = Window:CreateTab("Home")
 
-local MainLabel1 = MainTab:CreateLabel("Status: Waiting")
+local HomeButton1 = HomeTab:CreateButton({
+    Name = "Join discord (/fWncS2vFxn)",
+    Callback = function()
+        setclipboard("discord.gg/fWncS2vFxn")
+        Rayfield:Notify({
+            Title = "Discord",
+            Content = "discord.gg/fWncS2vFxn",
+            Duration = 5,
+            Image = nil,
+        })
+    end,
+})
 
-local MainToggle1 = MainTab:CreateToggle({
+local HomeButton2 = HomeTab:CreateButton({
+    Name = "Close GUI (Destroy)",
+    Callback = function()
+        if runTask then
+           task.cancel(runTask)
+           runTask = nil
+        end
+        if shootTask then
+            task.cancel(shootTask)
+            shootTask = nil
+        end
+        Rayfield:Destroy()
+    end,
+})
+
+local ToolsTab = Window:CreateTab("Tools")
+
+local fullbright
+
+local function fullbrightfunc()
+    local Lighting = game:GetService("Lighting")
+    Lighting.Brightness = 2
+    Lighting.ClockTime = 14
+    Lighting.FogEnd = 100000
+    Lighting.GlobalShadows = false
+    Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    Lighting.location.Brightness = 0
+end
+
+local ToolsToggle1 = ToolsTab:CreateToggle({
+    Name = "Fullbright",
+    CurrentValue = false,
+    Flag = "ToolsToggle1",
+    Callback = function(Value)
+        if Value then
+            fullbright = game:GetService("RunService").RenderStepped:Connect(fullbrightfunc)
+        else
+            if not fullbright then return end
+            fullbright:Disconnect()
+            fullbright = nil
+        end
+    end
+})
+
+local HuntTab = Window:CreateTab("Hunt")
+
+local HuntLabel1 = HuntTab:CreateLabel("Status: Waiting")
+
+local HuntToggle1 = HuntTab:CreateToggle({
     Name = "Auto Hunt",
     CurrentValue = false,
-    Flag = "MainToggle1",
+    Flag = "HuntToggle1",
     Callback = function(Value)
         autohunt = Value
     end,
 })
 
-local MainDropdown1 = MainTab:CreateDropdown({
+local HuntDropdown1 = HuntTab:CreateDropdown({
     Name = "Farm Areas",
     Options = {"Beakwoods", "Deadlands", "Mount Beaks", "Quill Lake"},
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "MainDropdown1",
+    Flag = "HuntDropdown1",
     Callback = function(Option)
         regions = Option
     end,
 })
 
-local MainDropdown2 = MainTab:CreateDropdown({
+local HuntDropdown2 = HuntTab:CreateDropdown({
     Name = "Sort By",
     Options = {"None", "Bucks", "XP"},
     CurrentOption = {},
     MultipleOptions = false,
-    Flag = "MainDropdown2",
+    Flag = "HuntDropdown2",
     Callback = function(Option)
         sortBy = Option[1]
     end,
@@ -185,7 +244,7 @@ local function hunt()
     shootTask = task.spawn(function()
         shooting = true
         while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") > 0 do
-            MainLabel1:Set("Status: Hunting " .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP)
+            HuntLabel1:Set("Status: Hunting " .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP)
             task.wait()
             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(clientBird.WorldPivot.Position + Vector3.new(0, -5, 0))
             if tick() - ts1 > firerate then
@@ -195,12 +254,12 @@ local function hunt()
             end
             if tick() - ts2 > 120 or gun == nil then
                 shooting = false
-                MainLabel1:Set("Status: Waiting")
+                HuntLabel1:Set("Status: Waiting")
                 return
             end
         end
         shooting = false
-        MainLabel1:Set("Status: Waiting")
+        HuntLabel1:Set("Status: Waiting")
     end)
 end
 
@@ -225,3 +284,44 @@ runTask = task.spawn(function()
         end
     end
 end)
+
+local InventoryTab = Window:CreateTab("Inventory")
+
+local sellAllDelay = 15
+local InventoryToggle1 = InventoryTab:CreateToggle({
+    Name = "Auto Sell All",
+    CurrentValue = false,
+    Flag = "InventoryToggle1",
+    Callback = function(Value)
+        sellTask1 = task.spawn(function()
+            while task.wait(sellAllDelay) do
+                game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("All")
+            end
+        end)
+    end,
+})
+
+local InventorySlider1 = InventoryTab:CreateSlider({
+    Name = "Sell All Delay",
+    Range = {10, 60},
+    Increment = 1,
+    Suffix = "sec",
+    CurrentValue = 15,
+    Flag = "InventorySlider1",
+    Callback = function(Value)
+        sellAllDelay = Value
+    end,
+})
+
+local InventoryToggle2 = InventoryTab:CreateToggle({
+    Name = "Auto Sell Hand",
+    CurrentValue = false,
+    Flag = "InventoryToggle2",
+    Callback = function(Value)
+        sellTask1 = task.spawn(function()
+            while task.wait() do
+                game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("Selected")
+            end
+        end)
+    end,
+})

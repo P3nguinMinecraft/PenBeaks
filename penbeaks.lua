@@ -153,6 +153,7 @@ end
 
 local gun
 local firerate = 0.5
+local shooting = false
 local guncast = require(game:GetService("Players").LocalPlayer.PlayerScripts.Client.Controllers.GunController.GunFastCast)
 local function hunt()
     local bird = getBird(regions)
@@ -174,18 +175,23 @@ local function hunt()
     end
     local ts1 = 0
     local ts2 = tick()
-    while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") > 0 do
-        task.wait()
-        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(clientBird.WorldPivot.Position + Vector3.new(0, -3, 0))
-        if tick() - ts1 > firerate then
-            ts1 = tick()
-            local func = guncast.new(gun)
-            func(clientBird.Torso.RootPart.Position)
+    shootTask = task.spawn(function()
+        shooting = true
+        while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") > 0 do
+            task.wait()
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(clientBird.WorldPivot.Position + Vector3.new(0, -5, 0))
+            if tick() - ts1 > firerate then
+                ts1 = tick()
+                local func = guncast.new(gun)
+                func(clientBird.Torso.RootPart.Position)
+            end
+            if tick() - ts2 > 120 or gun == nil then
+                shooting = false
+                return
+            end
         end
-        if tick() - ts2 > 60 then
-            return
-        end
-    end
+        shooting = false
+    end)
 end
 
 if runTask then

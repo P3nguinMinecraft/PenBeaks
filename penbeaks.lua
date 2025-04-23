@@ -182,7 +182,7 @@ local function hunt()
             local func = guncast.new(gun)
             func(clientBird.Torso.RootPart.Position)
         end
-        if tick() - ts2 > 30 then
+        if tick() - ts2 > 60 then
             return
         end
     end
@@ -209,4 +209,3 @@ runTask = task.spawn(function()
         end
     end
 end)
-

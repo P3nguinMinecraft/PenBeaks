@@ -1,5 +1,4 @@
-autohunt = true
-
+local autohunt = false
 local regions = {}
 local sortBy = "Bucks"
 
@@ -210,3 +209,4 @@ runTask = task.spawn(function()
         end
     end
 end)
+

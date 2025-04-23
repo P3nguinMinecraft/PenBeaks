@@ -184,6 +184,9 @@ local function getBird(regions)
                 local attributes = serverBird:GetAttributes()
                 local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
                 if attributes.Mutation then
+                    if attributes.Mutation == "Black & White" then
+                        attributes.Mutation = "B&W"
+                    end
                     print("Mutation found: " .. attributes.Mutation)
                     value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
                 end
@@ -257,7 +260,7 @@ local function hunt()
             local string = "Status: Hunting "
             if bird.Attributes.Shiny then string = string .. "Shiny " end
             if bird.Attributes.Golden then string = string .. "Golden " end
-            if bird.Attributes.Mutation then string = stirng .. bird.Attributes.Mutation .. " " end
+            if bird.Attributes.Mutation then string = string .. bird.Attributes.Mutation .. " " end
             string = string .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP
             HuntLabel1:Set(string)
             task.wait()

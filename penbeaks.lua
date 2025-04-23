@@ -51,7 +51,7 @@ local MainToggle1 = MainTab:CreateToggle({
 
 local MainDropdown1 = MainTab:CreateDropdown({
     Name = "Farm Areas",
-    Options = {"Beakwoods", ""},
+    Options = {"Beakwoods", "Deadlands", "Mount Beaks", "Quill Lake"},
     CurrentOption = {},
     MultipleOptions = true,
     Flag = "MainDropdown1",
@@ -62,7 +62,7 @@ local MainDropdown1 = MainTab:CreateDropdown({
 
 local MainDropdown2 = MainTab:CreateDropdown({
     Name = "Sort By",
-    Options = {"Bucks", "XP"},
+    Options = {"None", "Bucks", "XP"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "MainDropdown2",

@@ -64,13 +64,23 @@ local HomeButton2 = HomeTab:CreateButton({
             task.cancel(shootTask)
             shootTask = nil
         end
+        if sellTask1 then
+            task.cancel(sellTask1)
+            sellTask1 = nil
+        end
+        if sellTask2 then
+            task.cancel(sellTask2)
+            sellTask2 = nil
+        end
+        if fullbright then
+            fullbright:Disconnect()
+            fullbright = nil
+        end
         Rayfield:Destroy()
     end,
 })
 
 local ToolsTab = Window:CreateTab("Tools")
-
-local fullbright
 
 local function fullbrightfunc()
     local Lighting = game:GetService("Lighting")
@@ -79,7 +89,6 @@ local function fullbrightfunc()
     Lighting.FogEnd = 100000
     Lighting.GlobalShadows = false
     Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    Lighting.location.Brightness = 0
 end
 
 local ToolsToggle1 = ToolsTab:CreateToggle({
@@ -175,6 +184,7 @@ local function getBird(regions)
                 local attributes = serverBird:GetAttributes()
                 local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
                 if attributes.Mutation then
+                    print("Mutation found: " .. attributes.Mutation)
                     value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
                 end
                 if attributes.Golden then
@@ -292,14 +302,21 @@ end)
 
 local InventoryTab = Window:CreateTab("Inventory")
 
+local sellAll = false
 local sellAllDelay = 15
 local InventoryToggle1 = InventoryTab:CreateToggle({
     Name = "Auto Sell All",
     CurrentValue = false,
     Flag = "InventoryToggle1",
     Callback = function(Value)
+        if sellTask1 then
+            task.cancel(sellTask1)
+            sellTask1 = nil
+        end
+        sellAll = Value
         sellTask1 = task.spawn(function()
-            while task.wait(sellAllDelay) do
+            while sellAll do
+                task.wait(sellAllDelay)
                 game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("All")
             end
         end)
@@ -318,13 +335,20 @@ local InventorySlider1 = InventoryTab:CreateSlider({
     end,
 })
 
+local sellHand = false
 local InventoryToggle2 = InventoryTab:CreateToggle({
     Name = "Auto Sell Hand",
     CurrentValue = false,
     Flag = "InventoryToggle2",
     Callback = function(Value)
-        sellTask1 = task.spawn(function()
-            while task.wait() do
+        if sellTask2 then
+            task.cancel(sellTask2)
+            sellTask2 = nil
+        end
+        sellHand = Value
+        sellTask2 = task.spawn(function()
+            while sellHand do
+                task.wait()
                 game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("Selected")
             end
         end)

@@ -40,6 +40,8 @@ local Window = Rayfield:CreateWindow({
 
 local MainTab = Window:CreateTab("Main")
 
+local MainLabel1 = MainTab:CreateLabel("Status: Waiting")
+
 local MainToggle1 = MainTab:CreateToggle({
     Name = "Auto Hunt",
     CurrentValue = false,
@@ -112,30 +114,35 @@ local function getBird(regions)
             local server = region.ServerBirds
             for _, serverBird in pairs(server:GetChildren()) do
                 local attributes = serverBird:GetAttributes()
+                local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
+                if attributes.Mutation then
+                    value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
+                end
+                if attributes.Golden then
+                    value = value * gameData.goldenData.PriceMultiplier
+                end
+                if attributes.Shiny then
+                    value = value * gameData.shinyData.PriceMultiplier
+                end
+                local xp = gameData.birdsData[attributes.Region][attributes.Bird]["XP"]
+
                 if sortBy == "Bucks" then
-                    local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
-                    if attributes.Mutation then
-                        value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
-                    end
-                    if attributes.Golden then
-                        value = value * gameData.goldenData.PriceMultiplier
-                    end
-                    if attributes.Shiny then
-                        value = value * gameData.shinyData.PriceMultiplier
-                    end
                     if value > bird.Value then
                         bird.Value = value
+                        bird.XP = xp
                         bird.Attributes = attributes
                         bird.Server = serverBird
                     end
                 elseif sortBy == "XP" then
-                    local xp = gameData.birdsData[attributes.Region][attributes.Bird]["XP"]
                     if xp > bird.XP then
+                        bird.Value = value
                         bird.XP = xp
                         bird.Attributes = attributes
                         bird.Server = serverBird
                     end
                 else
+                    bird.Value = value
+                    bird.XP = xp
                     bird.Attributes = attributes
                     bird.Server = serverBird
                     return
@@ -178,6 +185,7 @@ local function hunt()
     shootTask = task.spawn(function()
         shooting = true
         while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") > 0 do
+            MainLabel1:Set("Status: Hunting " .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP)
             task.wait()
             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(clientBird.WorldPivot.Position + Vector3.new(0, -5, 0))
             if tick() - ts1 > firerate then
@@ -187,10 +195,12 @@ local function hunt()
             end
             if tick() - ts2 > 120 or gun == nil then
                 shooting = false
+                MainLabel1:Set("Status: Waiting")
                 return
             end
         end
         shooting = false
+        MainLabel1:Set("Status: Waiting")
     end)
 end
 
@@ -210,7 +220,7 @@ runTask = task.spawn(function()
             gun = game.Players.LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
             if gun and gun:FindFirstChild("Gun") then
                 firerate = gameData.gunData[gun.Name].Stats["Fire Rate"]
-                hunt()
+                if not shooting then hunt() end
             end
         end
     end

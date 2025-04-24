@@ -2,6 +2,15 @@ local autohunt = false
 local regions = {}
 local sortBy = "Bucks"
 
+local gameData = {
+    birdsData = require(game:GetService("ReplicatedStorage").Configuration.Birds),
+    mutationData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Mutations),
+    goldenData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Golden),
+    shinyData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Shiny),
+    gunData = require(game:GetService("ReplicatedStorage").Configuration.Guns),
+    dataController = require(game:GetService("Players").LocalPlayer.PlayerScripts.Client.Controllers.DataController),
+}
+
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
@@ -141,26 +150,16 @@ local HuntDropdown2 = HuntTab:CreateDropdown({
     end,
 })
 
-
-local gameData = {
-    birdsData = require(game:GetService("ReplicatedStorage").Configuration.Birds),
-    mutationData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Mutations),
-    goldenData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Golden),
-    shinyData = require(game:GetService("ReplicatedStorage").Configuration.Birds.Shiny),
-    gunData = require(game:GetService("ReplicatedStorage").Configuration.Guns),
-}
-
-
-local function getClientBird(regions, id)
+local function getServerBird(regions, id)
     local reg = game:GetService("Workspace").Regions
     for _, regname in pairs(regions) do
         local region = reg:FindFirstChild(regname)
         if region then
-            local client = region.ClientBirds
-            for _, clientBird in pairs(client:GetChildren()) do
-                local attributes = clientBird:GetAttributes()
+            local server = region.ServerBirds
+            for _, serverBird in ipairs(server:GetChildren()) do
+                local attributes = serverBird:GetAttributes()
                 if attributes.Id == id then
-                    return clientBird
+                    return serverBird
                 end
             end
         end
@@ -172,6 +171,7 @@ local function getBird(regions)
         Value = 0,
         XP = 0,
         Attributes = {},
+        Client = nil,
         Server = nil,
     }
 
@@ -179,51 +179,57 @@ local function getBird(regions)
     for _, regname in pairs(regions) do
         local region = reg:FindFirstChild(regname)
         if region then
-            local server = region.ServerBirds
-            for _, serverBird in pairs(server:GetChildren()) do
-                local attributes = serverBird:GetAttributes()
-                local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
-                if attributes.Mutation then
-                    if attributes.Mutation == "Black & White" then
-                        attributes.Mutation = "B&W"
-                    end
-                    if gameData.mutationData[attributes.Mutation] == nil then
-                        warn("Mutation not found in data: " .. attributes.Mutation)
-                    else
-                        value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
-                    end
-                end
-                if attributes.Golden then
-                    value = value * gameData.goldenData.PriceMultiplier
-                end
-                if attributes.Shiny then
-                    value = value * gameData.shinyData.PriceMultiplier
-                end
-                local xp = gameData.birdsData[attributes.Region][attributes.Bird]["XP"]
-
-                if sortBy == "Bucks" then
-                    if value > bird.Value then
-                        bird.Value = value
-                        bird.XP = xp
-                        bird.Attributes = attributes
-                        bird.Server = serverBird
-                    end
-                elseif sortBy == "XP" then
-                    if xp > bird.XP then
-                        bird.Value = value
-                        bird.XP = xp
-                        bird.Attributes = attributes
-                        bird.Server = serverBird
-                    end
+            local client = region.ClientBirds
+            for _, clientBird in ipairs(client:GetChildren()) do
+                local serverBird = getServerBird(regions, clientBird:GetAttribute("Id"))
+                if not serverBird then
+                    --warn("Server bird not found for client bird: " .. clientBird:GetAttribute("Id"))
                 else
-                    bird.Value = value
-                    bird.XP = xp
-                    bird.Attributes = attributes
-                    bird.Server = serverBird
-                    return
+                    local attributes = serverBird:GetAttributes()
+                    local value = gameData.birdsData[attributes.Region][attributes.Bird]["SellPrice"]
+                    if attributes.Mutation then
+                        if attributes.Mutation == "Black & White" then
+                            attributes.Mutation = "B&W"
+                        end
+                        if gameData.mutationData[attributes.Mutation] == nil then
+                            warn("Mutation not found in data: " .. attributes.Mutation)
+                        else
+                            value = value * gameData.mutationData[attributes.Mutation].PriceMultiplier
+                        end
+                    end
+                    if attributes.Golden then
+                        value = value * gameData.goldenData.PriceMultiplier
+                    end
+                    if attributes.Shiny then
+                        value = value * gameData.shinyData.PriceMultiplier
+                    end
+                    local xp = gameData.birdsData[attributes.Region][attributes.Bird]["XP"]
+
+                    if sortBy == "Bucks" then
+                        if value > bird.Value then
+                            bird.Value = value
+                            bird.XP = xp
+                            bird.Attributes = attributes
+                            bird.Server = serverBird
+                            bird.Client = clientBird
+                        end
+                    elseif sortBy == "XP" then
+                        if xp > bird.XP then
+                            bird.Value = value
+                            bird.XP = xp
+                            bird.Attributes = attributes
+                            bird.Server = serverBird
+                            bird.Client = clientBird
+                        end
+                    else
+                        bird.Value = value
+                        bird.XP = xp
+                        bird.Attributes = attributes
+                        bird.Server = serverBird
+                        bird.Client = clientBird
+                        return bird
+                    end
                 end
-                bird.Attributes = attributes
-                bird.Server = serverBird
             end
         else
             warn("Region not found: " .. regname)
@@ -240,38 +246,41 @@ local guncast = require(game:GetService("Players").LocalPlayer.PlayerScripts.Cli
 local function hunt()
     local bird = getBird(regions)
     if not bird.Server then
-        warn("No server bird")
+        warn("Missing bird server!")
+        return
+    end
+    if not bird.Client then
+        warn("Missing bird client!")
         return
     end
     game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = bird.Server.CFrame
-    task.wait(0.1)
-    local clientBird = getClientBird(regions, bird.Attributes.Id)
-    if not clientBird then
-        task.wait(0.3)
-        clientBird = getClientBird(regions, bird.Attributes.Id)
-        if not clientBird then
-            warn("No client bird")
-            bird.Server:Destroy()
-            return
-        end
-    end
     local ts1 = 0
     local ts2 = tick()
     shootTask = task.spawn(function()
         shooting = true
-        while clientBird.Parent ~= nil and clientBird:GetAttribute("Health") and clientBird:GetAttribute("Health") > 0 do
+        while bird.Client.Parent ~= nil and bird.Client:GetAttribute("Health") and bird.Client:GetAttribute("Health") > 0 do
             local string = "Status: Hunting "
             if bird.Attributes.Shiny then string = string .. "Shiny " end
             if bird.Attributes.Golden then string = string .. "Golden " end
             if bird.Attributes.Mutation then string = string .. bird.Attributes.Mutation .. " " end
-            string = string .. bird.Attributes.BirdName .. " " .. "HP: " .. clientBird:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP
+            string = string .. bird.Attributes.BirdName .. " " .. "HP: " .. bird.Client:GetAttribute("Health") .. "/" .. bird.Attributes.MaxHealth .. " Bucks: " .. bird.Value .. " XP: " .. bird.XP
             HuntLabel1:Set(string)
             task.wait()
-            game.Players.LocalPlayer.Character.HumanoidRootPart.Position = clientBird.WorldPivot.Position + Vector3.new(0, 10, 0)
+            game.Players.LocalPlayer.Character.HumanoidRootPart.Position = bird.Client.WorldPivot.Position + Vector3.new(0, 10, 0)
             if tick() - ts1 > firerate then
                 ts1 = tick()
                 local func = guncast.new(gun)
-                func(clientBird.Beak.PrimaryBeak.Position)
+                local pos
+                if bird.Client:FindFirstChild("Torso") and bird.Client.Torso:FindFirstChild("RootPart") then
+                    pos = bird.Client.Torso.RootPart.Position
+                elseif bird.Client:FindFirstChild("Beak") and bird.Client.Beak:FindFirstChild("PrimaryBeak") then
+                    pos = bird.Client.Beak.PrimaryBeak.Position
+                elseif bird.Client.PrimaryPart then
+                    pos = bird.Client.PrimaryPart.Position
+                else
+                    pos = bird.Client.WorldPivot.Position
+                end
+                func(pos)
             end
             if tick() - ts2 > 120 or gun == nil then
                 shooting = false
@@ -302,11 +311,15 @@ runTask = task.spawn(function()
                 firerate = gameData.gunData[gun.Name].Stats["Fire Rate"]
                 if not shooting then hunt() end
             end
+        else
+            task.wait(0.5)
         end
     end
 end)
 
 local InventoryTab = Window:CreateTab("Inventory")
+
+local InventorySection1 = InventoryTab:CreateSection("Sell")
 
 local sellAll = false
 local sellAllDelay = 15
@@ -322,8 +335,8 @@ local InventoryToggle1 = InventoryTab:CreateToggle({
         sellAll = Value
         sellTask1 = task.spawn(function()
             while sellAll do
-                task.wait(sellAllDelay)
                 game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("All")
+                task.wait(sellAllDelay)
             end
         end)
     end,
@@ -354,9 +367,79 @@ local InventoryToggle2 = InventoryTab:CreateToggle({
         sellHand = Value
         sellTask2 = task.spawn(function()
             while sellHand do
-                task.wait()
                 game:GetService("ReplicatedStorage").Util.Net["RF/SellInventory"]:InvokeServer("Selected")
+                task.wait()
             end
         end)
+    end,
+})
+
+local InventorySection2 = InventoryTab:CreateSection("Buy Gun")
+
+local gunTable = {}
+for i, _ in pairs(gameData.gunData) do
+    table.insert(gunTable, i)
+end
+
+local selectedBuyGun = ""
+local allowDupe = false
+local InventoryDropdown1 = InventoryTab:CreateDropdown({
+    Name = "Select Gun",
+    Options = gunTable,
+    CurrentOption = {},
+    MultipleOptions = false,
+    Flag = "InventoryDropdown1",
+    Callback = function(Option)
+        selectedBuyGun = Option[1]
+    end,
+})
+
+local InventoryToggle3 = InventoryTab:CreateToggle({
+    Name = "Allow Duplicates",
+    CurrentValue = false,
+    Flag = "InventoryToggle3",
+    Callback = function(Value)
+        allowDupe = Value
+    end,
+})
+
+local function contains(table, value)
+    for _, v in pairs(table) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
+local InventoryButton1 = InventoryTab:CreateButton({
+    Name = "Buy Gun",
+    Callback = function()
+        if not gameData.gunData[selectedBuyGun] then
+            Rayfield:Notify({
+                Title = "Buy Gun",
+                Content = "Select a gun to buy!",
+                Duration = 5,
+                Image = nil,
+            })
+            return
+        end
+        local data = gameData.dataController:GetPlayerData()
+        if allowDupe or not contains(data.Equipment.Guns.Owned, selectedBuyGun) then
+            game:GetService("ReplicatedStorage").Util.Net["RF/GunShop"]:InvokeServer("BuyGun", selectedBuyGun)
+            Rayfield:Notify({
+                Title = "Buy Gun",
+                Content = "Attempted to buy " .. selectedBuyGun,
+                Duration = 5,
+                Image = nil,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Buy Gun",
+                Content = "You already own this gun!",
+                Duration = 5,
+                Image = nil,
+            })
+        end
     end,
 })
